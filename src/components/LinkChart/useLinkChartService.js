@@ -3,8 +3,9 @@ import dagre from 'dagre'
 import insertCss from 'insert-css'
 import { ref, onMounted, watch } from 'vue'
 
-export default function useLinkChartService(props) {
+export default function useLinkChartService(props, emit) {
   const data = props.data
+  const rootId = data.id
   const container = ref(null)
   const imgMap = {
     1: require('@/assets/fulllink/user.png'),
@@ -12,63 +13,7 @@ export default function useLinkChartService(props) {
     3: require('@/assets/fulllink/link.png'),
     4: require('@/assets/fulllink/database.png'),
   }
-  function insertNode(node, sourceId, targetId, newNode) {
-    if (node.id === sourceId) {
-      node.children = node.children ?? []
-      const index = node.children.findIndex((item) => item.id === targetId)
-      if (index !== -1) {
-        newNode.children = [node.children[index]]
-        node.children.splice(index, 1, newNode)
-      }
-    }
-    if (node.children) {
-      for (const subNode of node.children) {
-        insertNode(subNode, sourceId, targetId, newNode)
-      }
-    }
-  }
-  function addNodeChild(node, targetId, newNode) {
-    if (node.id === targetId) {
-      node.children = node.children ?? []
-      node.children.push(newNode)
-    }
-    if (node.children) {
-      for (const subNode of node.children) {
-        addNodeChild(subNode, targetId, newNode)
-      }
-    }
-  }
-  function deleteNode(node, targetId, parent = null) {
-    if (node.id === targetId) {
-      if (parent) {
-        const index = parent.children.findIndex((item) => item.id === targetId)
-        if (index !== -1) {
-          parent.children.splice(index, 1)
-        }
-      }
-    }
-    if (node.children) {
-      for (const subNode of node.children) {
-        deleteNode(subNode, targetId, node)
-      }
-    }
-  }
-  function removeNode(node, targetId, parent = null) {
-    if (node.id === targetId) {
-      if (parent) {
-        const index = parent.children.findIndex((item) => item.id === targetId)
-        if (index !== -1) {
-          const targetChildren = parent.children[index].children ?? []
-          parent.children.splice(index, 1, ...targetChildren)
-        }
-      }
-    }
-    if (node.children) {
-      for (const subNode of node.children) {
-        removeNode(subNode, targetId, node)
-      }
-    }
-  }
+
   function getAllNodes(node, result = []) {
     const data = {
       id: node.id,
@@ -231,7 +176,7 @@ export default function useLinkChartService(props) {
             refCx: '50%',
             refCy: '50%',
             refX: 0,
-            refY: 0,
+            refY: 1,
             event: 'node:remove',
           },
           add: {
@@ -261,12 +206,12 @@ export default function useLinkChartService(props) {
             ref: 'image',
             text: '-',
             fill: '#5f95ff',
-            fontSize: 20,
+            fontSize: 22,
             textAnchor: 'middle',
             textVerticalAnchor: 'middle',
             pointerEvents: 'none',
             refX: 27,
-            refY: 35,
+            refY: 33,
           },
           deleteBody: {
             ref: 'delete',
@@ -358,16 +303,16 @@ export default function useLinkChartService(props) {
             url: 'api/' + node.id + i,
           },
         }
-        addNodeChild(data, node.id, newNode)
+        emit('add-node', { id: node.id, newNode })
         layout(data)
       })
 
       graph.on('node:delete', ({ node }) => {
-        deleteNode(data, node.id)
+        emit('delete-node', { id: node.id })
         layout(data)
       })
       graph.on('node:remove', ({ node }) => {
-        removeNode(data, node.id)
+        emit('remove-node', { id: node.id })
         layout(data)
       })
       graph.on('edge:dblclick', ({ edge }) => {
@@ -384,9 +329,8 @@ export default function useLinkChartService(props) {
             url: 'api/v1/' + sourceId + '-' + targetId + i,
           },
         }
-        insertNode(data, sourceId, targetId, newNode)
+        emit('insert-node', { sourceId, targetId, newNode })
         layout(data)
-        console.log(data)
       })
     }
 
@@ -409,7 +353,8 @@ export default function useLinkChartService(props) {
           node.attr('delete', null)
           node.attr('remove', null)
         }
-        if (node.id === 'root') {
+        if (node.id === rootId) {
+          node.attr('add/refX', 12)
           node.attr('delete', null)
           node.attr('remove', null)
         }
@@ -434,9 +379,6 @@ export default function useLinkChartService(props) {
         const target = edge.getTargetNode()
         const sourceBBox = source.getBBox()
         const targetBBox = target.getBBox()
-
-        console.log(sourceBBox, targetBBox)
-
         const gap = targetBBox.y - sourceBBox.y - sourceBBox.height
         const fix = sourceBBox.height
         const y = sourceBBox.y + fix + gap / 2

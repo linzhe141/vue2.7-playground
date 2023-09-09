@@ -19,6 +19,12 @@ import vClickoutside from 'element-ui/src/utils/clickoutside'
 import { ref } from 'vue'
 import { ElSelect } from 'element-ui'
 import useLinkChartService from './useLinkChartService'
+const emit = defineEmits(
+  'add-node',
+  'delete-node',
+  'insert-node',
+  'remove-node'
+)
 const props = defineProps({
   audit: {
     type: Boolean,
@@ -31,7 +37,6 @@ const props = defineProps({
 const showSelect = ref(false)
 const selectWrapper = ref(null)
 const selectValue = ref('')
-// let i = 0;
 function clickoutsideHandle() {
   if (!showSelect.value) return
   if (showSelect.value) {
@@ -39,6 +44,6 @@ function clickoutsideHandle() {
   }
 }
 
-const { container } = useLinkChartService(props)
+const { container } = useLinkChartService(props, emit)
 </script>
 <style lang="scss" scoped></style>
